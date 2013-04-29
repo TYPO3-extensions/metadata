@@ -73,49 +73,56 @@ class Image extends \TYPO3\CMS\Core\Service\AbstractService {
 			}
 
 			// Makes sure the function exists otherwise generates a log entry
-			if (function_exists('exif_read_data')) {
+			if(function_exists('exif_imagetype') && function_exists('exif_read_data')) {
 
-				$exif = exif_read_data($inputFile, 0, TRUE);
+				// Determine image type
+				$imagetype = exif_imagetype($inputFile);
+				
+				// Only try to read exif data for supported types
+				if(in_array($imagetype, array(IMAGETYPE_JPEG, IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM))) {
+					
+					$exif = exif_read_data($inputFile, 0, TRUE);
 
-				// Parse metadata from EXIF GPS block
-				if (is_array($exif['GPS'])) {
-					$this->out['latitude'] = $this->parseGPSCoordinate($exif['GPS']['GPSLatitude'], $exif['GPS']['GPSLatitudeRef']);;
-					$this->out['longitude'] = $this->parseGPSCoordinate($exif['GPS']['GPSLongitude'], $exif['GPS']['GPSLongitudeRef']);;
-				}
+					// Parse metadata from EXIF GPS block
+					if (is_array($exif['GPS'])) {
+						$this->out['latitude'] = $this->parseGPSCoordinate($exif['GPS']['GPSLatitude'], $exif['GPS']['GPSLatitudeRef']);;
+						$this->out['longitude'] = $this->parseGPSCoordinate($exif['GPS']['GPSLongitude'], $exif['GPS']['GPSLongitudeRef']);;
+					}
 
-				// Parse metadata from EXIF EXIF block
-				if (is_array($exif['EXIF'])) {
-					$this->out['creation_date'] = strtotime($exif['EXIF']['DateTimeOriginal']);
-				}
+					// Parse metadata from EXIF EXIF block
+					if (is_array($exif['EXIF'])) {
+						$this->out['creation_date'] = strtotime($exif['EXIF']['DateTimeOriginal']);
+					}
 
-				// Parse metadata from EXIF IFD0 block
-				if (is_array($exif['IFD0'])) {
+					// Parse metadata from EXIF IFD0 block
+					if (is_array($exif['IFD0'])) {
 
-					foreach ($exif['IFD0'] as $exifAttribute => $value) {
+						foreach ($exif['IFD0'] as $exifAttribute => $value) {
 
-						switch ($exifAttribute) {
+							switch ($exifAttribute) {
 
-							case 'XResolution' :
-								$this->out['horizontal_resolution'] = $this->fractionToInt($value);
-							break;
-							case 'YResolution' :
-								$this->out['vertical_resolution'] = $this->fractionToInt($value);
-							break;
-							case 'Subject' :
-								$this->out['description'] = $value;
-							break;
-							case 'DateTime' :
-								$this->out['modification_date'] = strtotime($value);
-							break;
-							case 'Software' :
-								$this->out['creator_tool'] = $value;
-							break;
+								case 'XResolution' :
+									$this->out['horizontal_resolution'] = $this->fractionToInt($value);
+								break;
+								case 'YResolution' :
+									$this->out['vertical_resolution'] = $this->fractionToInt($value);
+								break;
+								case 'Subject' :
+									$this->out['description'] = $value;
+								break;
+								case 'DateTime' :
+									$this->out['modification_date'] = strtotime($value);
+								break;
+								case 'Software' :
+									$this->out['creator_tool'] = $value;
+								break;
+							}
 						}
 					}
 				}
 			}
 			else {
-				\TYPO3\CMS\Core\Utility\GeneralUtility::devLog('Function exif_read_data() is not available. Make sure Mbstring and Exif module are loaded.', 2);
+				\TYPO3\CMS\Core\Utility\GeneralUtility::devLog('Function exif_imagetype() and exif_read_data() are not available. Make sure Mbstring and Exif module are loaded.', 2);
 			}
 
 			// Check if IPTC metadata exists
